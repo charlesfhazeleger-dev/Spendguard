@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpendGuard — Agent Cost Control (mockup)</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d212b;
+    --border: #272c38;
+    --text: #e6e9ef;
+    --muted: #8b93a3;
+    --accent: #5b9dff;
+    --green: #3ecf8e;
+    --amber: #ffb454;
+    --red: #ff5f57;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .app { display: flex; min-height: 100vh; }
+  /* Sidebar */
+  .sidebar {
+    width: 210px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    padding: 18px 14px;
+    flex-shrink: 0;
+  }
+  .logo { display: flex; align-items: center; gap: 9px; margin-bottom: 26px; padding-left: 4px; }
+  .logo-mark {
+    width: 26px; height: 26px; border-radius: 7px;
+    background: linear-gradient(135deg, var(--accent), #8b6dff);
+    display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff;
+  }
+  .logo-name { font-weight: 700; font-size: 15px; letter-spacing: -0.2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: 7px; color: var(--muted);
+    cursor: pointer; font-weight: 500; margin-bottom: 2px;
+  }
+  .nav-item.active { background: var(--panel-2); color: var(--text); }
+  .nav-item:hover:not(.active) { color: var(--text); }
+  .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .55; }
+  .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #5a6172; margin: 18px 4px 8px; }
+  /* Main */
+  .main { flex: 1; padding: 24px 30px; max-width: 1100px; }
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+  .page-title { font-size: 21px; font-weight: 700; letter-spacing: -0.3px; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+  .env-pill {
+    background: var(--panel-2); border: 1px solid var(--border);
+    padding: 6px 12px; border-radius: 999px; font-size: 12px; color: var(--muted);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(62,207,142,.5); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(62,207,142,.5);} 70%{box-shadow:0 0 0 6px rgba(62,207,142,0);} 100%{box-shadow:0 0 0 0 rgba(62,207,142,0);} }
+  /* Alert banner */
+  .alert {
+    background: linear-gradient(90deg, rgba(255,95,87,.14), rgba(255,95,87,.04));
+    border: 1px solid rgba(255,95,87,.4);
+    border-radius: 11px; padding: 15px 18px; margin-bottom: 22px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .alert-icon { width: 34px; height: 34px; border-radius: 9px; background: rgba(255,95,87,.18); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+  .alert-body { flex: 1; }
+  .alert-title { font-weight: 700; color: var(--red); }
+  .alert-text { color: #d9b3b0; font-size: 13px; margin-top: 2px; }
+  .alert-text b { color: var(--text); }
+  .kill-btn {
+    background: var(--red); color: #fff; border: none; font-weight: 700;
+    padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; white-space: nowrap;
+  }
+  .kill-btn:hover { background: #ff726b; }
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 11px; padding: 16px; }
+  .stat-label { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .stat-value { font-size: 25px; font-weight: 700; letter-spacing: -0.5px; font-family: var(--mono); }
+  .stat-delta { font-size: 12px; margin-top: 5px; }
+  .up { color: var(--red); }
+  .down { color: var(--green); }
+  .flat { color: var(--muted); }
+  /* Section */
+  .section { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 4px 0; margin-bottom: 22px; }
+  .section-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 18px 12px; }
+  .section-title { font-weight: 700; font-size: 15px; }
+  .section-meta { color: var(--muted); font-size: 12px; }
+  /* Table */
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; padding: 8px 18px; border-bottom: 1px solid var(--border); }
+  td { padding: 13px 18px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .agent-name { font-weight: 600; }
+  .agent-id { font-family: var(--mono); color: var(--muted); font-size: 11px; }
+  .cost { font-family: var(--mono); font-weight: 600; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.ok { background: rgba(62,207,142,.13); color: var(--green); }
+  .badge.warn { background: rgba(255,180,84,.13); color: var(--amber); }
+  .badge.crit { background: rgba(255,95,87,.14); color: var(--red); }
+  .bar-wrap { width: 90px; height: 6px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .bar { height: 100%; border-radius: 4px; }
+  .cap-btn { background: var(--panel-2); border: 1px solid var(--border); color: var(--text); padding: 6px 11px; border-radius: 7px; font-size: 12px; cursor: pointer; }
+  .cap-btn:hover { border-color: var(--accent); color: var(--accent); }
+  /* Loop detector card */
+  .grid-2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 22px; }
+  .loop-event { padding: 11px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
+  .loop-event:last-child { border: none; }
+  .loop-time { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 52px; flex-shrink: 0; padding-top: 1px; }
+  .loop-desc { font-size: 12.5px; }
+  .loop-desc b { color: var(--text); }
+  .loop-tag { font-family: var(--mono); font-size: 10.5px; color: var(--accent); }
+  .footnote { padding: 12px 18px; color: #5a6172; font-size: 11px; font-style: italic; }
+  .sidebar{width:210px;background:var(--panel);border-right:1px solid var(--border);padding:18px 14px;flex-shrink:0;}
+  .main{flex:1;padding:24px 30px;max-width:1100px;}
+  .range-pill{background:var(--panel-2);border:1px solid var(--border);padding:6px 12px;border-radius:8px;font-size:12px;color:var(--muted);}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+  .section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:4px 0;margin-bottom:22px;}
+  /* stacked bar */
+  .stackwrap{padding:6px 18px 20px;}
+  .stackbar{display:flex;height:34px;border-radius:7px;overflow:hidden;margin-bottom:14px;}
+  .seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:#0f1115;}
+  .legend{display:flex;flex-wrap:wrap;gap:16px;}
+  .leg{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);}
+  .swatch{width:10px;height:10px;border-radius:3px;}
+  table{width:100%;border-collapse:collapse;}
+  .name{font-weight:600;}
+  .sub{font-family:var(--mono);color:var(--muted);font-size:11px;}
+  .pct{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:8px;}
+  .tag{font-family:var(--mono);font-size:10.5px;padding:3px 7px;border-radius:5px;background:var(--panel-2);color:var(--muted);}
+  .crumb{color:var(--muted);font-size:12px;margin-bottom:8px;}
+  .crumb a{color:var(--accent);text-decoration:none;}
+  .resolved{font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:rgba(62,207,142,.13);color:var(--green);}
+  .stat-value.red{color:var(--red);}
+  .stat-value.green{color:var(--green);}
+  /* timeline */
+  .tl{position:relative;padding:6px 18px 16px 44px;}
+  .tl::before{content:"";position:absolute;left:26px;top:6px;bottom:16px;width:2px;background:var(--border);}
+  .ev{position:relative;padding:10px 0;}
+  .ev::before{content:"";position:absolute;left:-25px;top:14px;width:11px;height:11px;border-radius:50%;background:var(--muted);border:2px solid var(--bg);}
+  .ev.warn::before{background:var(--amber);}
+  .ev.crit::before{background:var(--red);}
+  .ev.ok::before{background:var(--green);}
+  .ev-time{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .ev-title{font-weight:600;font-size:13.5px;margin-top:2px;}
+  .ev-desc{font-size:12.5px;color:var(--muted);margin-top:2px;}
+  .ev-desc b{color:var(--text);}
+  .spend-chart{display:flex;align-items:flex-end;gap:3px;height:120px;padding:18px;}
+  .spike{flex:1;background:linear-gradient(180deg,var(--accent),rgba(91,157,255,.3));border-radius:3px 3px 0 0;}
+  .spike.hot{background:linear-gradient(180deg,var(--red),rgba(255,95,87,.3));}
+  .chart-x{display:flex;justify-content:space-between;padding:0 18px 14px;font-family:var(--mono);font-size:10.5px;color:#5a6172;}
+  .rootcause{padding:14px 18px;}
+  .rc-box{background:var(--panel-2);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;padding:13px 15px;font-size:13px;}
+  .rc-box b{color:var(--amber);}
+  .code{font-family:var(--mono);font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-top:10px;color:#c3cad8;white-space:pre-wrap;}
+  .add-btn{background:var(--accent);color:#fff;border:none;font-weight:600;padding:9px 15px;border-radius:8px;cursor:pointer;font-size:13px;}
+  .rule{display:flex;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--border);}
+  .rule:last-child{border-bottom:none;}
+  .rule-main{flex:1;}
+  .rule-name{font-weight:600;font-size:13.5px;}
+  .rule-cond{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:3px;}
+  .rule-cond .k{color:var(--accent);}
+  .scope{font-size:11px;padding:3px 9px;border-radius:5px;background:var(--panel-2);color:var(--muted);font-family:var(--mono);}
+  .action-pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:999px;}
+  .action-pill.kill{background:rgba(255,95,87,.14);color:var(--red);}
+  .action-pill.fallback{background:rgba(255,180,84,.13);color:var(--amber);}
+  .action-pill.alert{background:rgba(91,157,255,.13);color:var(--accent);}
+  /* toggle */
+  .toggle{width:38px;height:22px;border-radius:999px;background:var(--green);position:relative;cursor:pointer;flex-shrink:0;}
+  .toggle.off{background:var(--border);}
+  .toggle::after{content:"";position:absolute;top:2px;left:18px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.15s;}
+  .toggle.off::after{left:2px;}
+  .builder{padding:16px 18px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .chip{background:var(--panel-2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;display:flex;gap:8px;align-items:center;}
+  .chip .lbl{color:var(--muted);font-size:11px;}
+  .chip .val{font-weight:600;font-family:var(--mono);}
+  .arrow{color:var(--muted);}
+  .screen{display:none;}
+  .nav-item{user-select:none;}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo"><div class="logo-mark">S</div><div class="logo-name">SpendGuard</div></div>
+    
+    <div class="nav-item" data-screen="monitor"><span class="nav-dot"></span> Live Monitor</div>
+    <div class="nav-item" data-screen="agents"><span class="nav-dot"></span> Agents</div>
+    <div class="nav-item" data-screen="incident"><span class="nav-dot"></span> Incidents</div>
+    <div class="nav-item" data-screen="attribution"><span class="nav-dot"></span> Cost Attribution</div>
+    <div class="nav-section">Controls</div>
+    <div class="nav-item" data-screen="controls"><span class="nav-dot"></span> Budget Caps</div>
+    <div class="nav-item" data-screen="controls"><span class="nav-dot"></span> Loop Rules</div>
+    <div class="nav-item" data-screen="controls"><span class="nav-dot"></span> Model Routing</div>
+    <div class="nav-section">Account</div>
+    <div class="nav-item" data-screen="monitor"><span class="nav-dot"></span> Team</div>
+    <div class="nav-item" data-screen="monitor"><span class="nav-dot"></span> Settings</div>
+
+  </aside>
+  <main class="main screen" id="screen-monitor" style="">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Live Monitor</div>
+        <div class="page-sub">Real-time agent spend across all production workloads</div>
+      </div>
+      <div class="env-pill"><span class="live-dot"></span> production · live</div>
+    </div>
+
+    <div class="alert">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-body">
+        <div class="alert-title">Runaway loop detected — research-agent-prod</div>
+        <div class="alert-text">Same tool call <b>web_search</b> fired <b>47×</b> in 90s. Task has spent <b>$3,180</b> and is climbing ~$210/min. Projected to hit budget cap in 4 min.</div>
+      </div>
+      <button class="kill-btn" onclick="killTask()">Kill Task</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-label">Spend today</div>
+        <div class="stat-value">$8,412</div>
+        <div class="stat-delta up">▲ 34% vs. avg day</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Active agents</div>
+        <div class="stat-value">126</div>
+        <div class="stat-delta flat">— 3 flagged</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Caught this month</div>
+        <div class="stat-value">$41.2k</div>
+        <div class="stat-delta down">▼ runaway spend blocked</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Tasks killed</div>
+        <div class="stat-value">19</div>
+        <div class="stat-delta flat">auto + manual</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <div class="section-title">Agents by spend · last hour</div>
+        <div class="section-meta">budget = % of per-task cap used</div>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Agent</th><th>Owner</th><th>Spend / hr</th><th>Budget used</th><th>Status</th><th></th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><div class="agent-name">research-agent-prod</div><div class="agent-id">agt_9f2a · claude-opus</div></td>
+            <td>data-platform</td>
+            <td class="cost">$3,180</td>
+            <td><div class="bar-wrap"><div class="bar" style="width:94%;background:var(--red)"></div></div></td>
+            <td><span class="badge crit">● runaway</span></td>
+            <td><button class="cap-btn" onclick="killTask()">Kill</button></td>
+          </tr>
+          <tr>
+            <td><div class="agent-name">support-resolver</div><div class="agent-id">agt_3c81 · claude-sonnet</div></td>
+            <td>customer-eng</td>
+            <td class="cost">$612</td>
+            <td><div class="bar-wrap"><div class="bar" style="width:61%;background:var(--amber)"></div></div></td>
+            <td><span class="badge warn">● watch</span></td>
+            <td><button class="cap-btn">Inspect</button></td>
+          </tr>
+          <tr>
+            <td><div class="agent-name">code-review-bot</div><div class="agent-id">agt_77de · claude-sonnet</div></td>
+            <td>dev-tools</td>
+            <td class="cost">$280</td>
+            <td><div class="bar-wrap"><div class="bar" style="width:28%;background:var(--green)"></div></div></td>
+            <td><span class="badge ok">● healthy</span></td>
+            <td><button class="cap-btn">Inspect</button></td>
+          </tr>
+          <tr>
+            <td><div class="agent-name">onboarding-flow</div><div class="agent-id">agt_1a05 · claude-haiku</div></td>
+            <td>growth</td>
+            <td class="cost">$94</td>
+            <td><div class="bar-wrap"><div class="bar" style="width:12%;background:var(--green)"></div></div></td>
+            <td><span class="badge ok">● healthy</span></td>
+            <td><button class="cap-btn">Inspect</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Loop detector — research-agent-prod</div>
+          <div class="section-meta">live trace</div>
+        </div>
+        <div class="loop-event"><div class="loop-time">14:02:11</div><div class="loop-desc"><b>web_search</b> called <span class="loop-tag">attempt #45</span> — identical args to #44, #43</div></div>
+        <div class="loop-event"><div class="loop-time">14:02:08</div><div class="loop-desc"><b>web_search</b> called <span class="loop-tag">attempt #44</span> — no new context added</div></div>
+        <div class="loop-event"><div class="loop-time">14:02:04</div><div class="loop-desc">Context window grew to <b>178k tokens</b> — 92% full</div></div>
+        <div class="loop-event"><div class="loop-time">14:01:59</div><div class="loop-desc"><b>web_search</b> called <span class="loop-tag">attempt #43</span> — same query string</div></div>
+        <div class="footnote">Pattern matched rule: "≥5 identical tool calls in 60s" → flagged as runaway</div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">Active controls</div>
+          <div class="section-meta">enforced in-path</div>
+        </div>
+        <div class="loop-event"><div class="loop-desc"><b>Per-task cap:</b> $3,500 → auto-kill on breach</div></div>
+        <div class="loop-event"><div class="loop-desc"><b>Loop rule:</b> ≥5 identical calls / 60s → flag</div></div>
+        <div class="loop-event"><div class="loop-desc"><b>Context guard:</b> halt at 95% window fill</div></div>
+        <div class="loop-event"><div class="loop-desc"><b>Fallback:</b> route to Haiku when daily team budget > 80%</div></div>
+        <div class="footnote">Controls run in the request proxy — they can block, not just observe.</div>
+      </div>
+    </div>
+  </main>
+<main class="main screen" id="screen-attribution" style="display:none">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Cost Attribution</div>
+        <div class="page-sub">Where the money actually goes — by team, agent, and customer</div>
+      </div>
+      <div class="range-pill">Last 30 days ▾</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Total spend</div><div class="stat-value">$187.4k</div><div class="stat-delta up">▲ 22% MoM</div></div>
+      <div class="stat"><div class="stat-label">Most expensive team</div><div class="stat-value" style="font-size:20px;">data-platform</div><div class="stat-delta flat">$71.1k · 38%</div></div>
+      <div class="stat"><div class="stat-label">Cost per resolved task</div><div class="stat-value">$0.34</div><div class="stat-delta down">▼ 11% after routing</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Spend by team</div><div class="section-meta">$187.4k total</div></div>
+      <div class="stackwrap">
+        <div class="stackbar">
+          <div class="seg" style="width:38%;background:var(--accent)">data-platform 38%</div>
+          <div class="seg" style="width:26%;background:var(--purple)">customer-eng 26%</div>
+          <div class="seg" style="width:18%;background:var(--green)">dev-tools 18%</div>
+          <div class="seg" style="width:11%;background:var(--amber)">growth 11%</div>
+          <div class="seg" style="width:7%;background:#5a6172">other 7%</div>
+        </div>
+        <div class="legend">
+          <div class="leg"><span class="swatch" style="background:var(--accent)"></span>data-platform · $71.1k</div>
+          <div class="leg"><span class="swatch" style="background:var(--purple)"></span>customer-eng · $48.7k</div>
+          <div class="leg"><span class="swatch" style="background:var(--green)"></span>dev-tools · $33.7k</div>
+          <div class="leg"><span class="swatch" style="background:var(--amber)"></span>growth · $20.6k</div>
+          <div class="leg"><span class="swatch" style="background:#5a6172"></span>other · $13.1k</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Top agents by cost</div><div class="section-meta">drill into any row</div></div>
+      <table>
+        <thead><tr><th>Agent</th><th>Team</th><th>Model</th><th>Spend</th><th>Share</th></tr></thead>
+        <tbody>
+          <tr><td><div class="name">research-agent-prod</div><div class="sub">agt_9f2a</div></td><td>data-platform</td><td><span class="tag">claude-opus</span></td><td class="cost">$52.3k</td><td><div class="bar-wrap"><div class="bar" style="width:100%;background:var(--accent)"></div></div><span class="pct">28%</span></td></tr>
+          <tr><td><div class="name">support-resolver</div><div class="sub">agt_3c81</div></td><td>customer-eng</td><td><span class="tag">claude-sonnet</span></td><td class="cost">$38.9k</td><td><div class="bar-wrap"><div class="bar" style="width:74%;background:var(--purple)"></div></div><span class="pct">21%</span></td></tr>
+          <tr><td><div class="name">code-review-bot</div><div class="sub">agt_77de</div></td><td>dev-tools</td><td><span class="tag">claude-sonnet</span></td><td class="cost">$26.1k</td><td><div class="bar-wrap"><div class="bar" style="width:50%;background:var(--green)"></div></div><span class="pct">14%</span></td></tr>
+          <tr><td><div class="name">doc-summarizer</div><div class="sub">agt_5b2f</div></td><td>data-platform</td><td><span class="tag">claude-haiku</span></td><td class="cost">$18.8k</td><td><div class="bar-wrap"><div class="bar" style="width:36%;background:var(--accent)"></div></div><span class="pct">10%</span></td></tr>
+          <tr><td><div class="name">onboarding-flow</div><div class="sub">agt_1a05</div></td><td>growth</td><td><span class="tag">claude-haiku</span></td><td class="cost">$14.2k</td><td><div class="bar-wrap"><div class="bar" style="width:27%;background:var(--amber)"></div></div><span class="pct">8%</span></td></tr>
+        </tbody>
+      </table>
+      <div class="footnote">Attribution keyed off request metadata (team, agent_id, customer_id) tagged at the proxy. Requires customers to pass those tags.</div>
+    </div>
+  </main>
+<main class="main screen" id="screen-incident" style="display:none">
+    <div class="crumb"><a href="#">Incidents</a> / INC-204</div>
+    <div class="topbar">
+      <div>
+        <div class="page-title">INC-204 · research-agent-prod runaway <span class="resolved">● resolved · auto-killed</span></div>
+        <div class="page-sub">May 26, 2026 · 14:00–14:03 · triggered by loop rule "≥5 identical calls / 60s"</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-label">Spent before kill</div><div class="stat-value red">$3,180</div></div>
+      <div class="stat"><div class="stat-label">Projected if uncaught</div><div class="stat-value">$41.0k</div></div>
+      <div class="stat"><div class="stat-label">Saved by auto-kill</div><div class="stat-value green">$37.8k</div></div>
+      <div class="stat"><div class="stat-label">Time to detect</div><div class="stat-value">90s</div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Spend rate during incident</div></div>
+      <div class="spend-chart">
+        <div class="spike" style="height:8%"></div><div class="spike" style="height:9%"></div>
+        <div class="spike" style="height:11%"></div><div class="spike" style="height:14%"></div>
+        <div class="spike hot" style="height:28%"></div><div class="spike hot" style="height:46%"></div>
+        <div class="spike hot" style="height:64%"></div><div class="spike hot" style="height:81%"></div>
+        <div class="spike hot" style="height:95%"></div><div class="spike hot" style="height:100%"></div>
+        <div class="spike" style="height:4%"></div><div class="spike" style="height:3%"></div>
+      </div>
+      <div class="chart-x"><span>14:00</span><span>14:01</span><span>14:02 — loop begins</span><span>14:03 — killed</span></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Event timeline</div></div>
+      <div class="tl">
+        <div class="ev ok"><div class="ev-time">14:00:02</div><div class="ev-title">Task started</div><div class="ev-desc">research-agent-prod began task <b>compile-market-report</b> · model claude-opus</div></div>
+        <div class="ev"><div class="ev-time">14:01:40</div><div class="ev-title">Normal tool use</div><div class="ev-desc">12 web_search calls, each with distinct queries — expected behavior</div></div>
+        <div class="ev warn"><div class="ev-time">14:02:01</div><div class="ev-title">Repetition detected</div><div class="ev-desc"><b>web_search</b> called 5× with identical args in 18s · loop rule armed</div></div>
+        <div class="ev crit"><div class="ev-time">14:02:30</div><div class="ev-title">Flagged as runaway</div><div class="ev-desc">Spend rate hit <b>$210/min</b> · context window at 92% · alert fired to #eng-oncall</div></div>
+        <div class="ev crit"><div class="ev-time">14:03:11</div><div class="ev-title">Auto-kill triggered</div><div class="ev-desc">Per-task projection exceeded cap · task terminated, in-flight calls cancelled</div></div>
+        <div class="ev ok"><div class="ev-time">14:03:12</div><div class="ev-title">Contained</div><div class="ev-desc">Final spend <b>$3,180</b> · downstream agents unaffected</div></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Root cause</div></div>
+      <div class="rootcause">
+        <div class="rc-box">
+          <b>Likely cause:</b> the agent's stopping condition checked for a result string that the tool never returned after an upstream API schema change. With no exit, it re-issued the same search indefinitely.
+          <div class="code">if "final_answer" in response:   # never true after schema change
+    break
+# else: loop continues — no max-iteration guard</div>
+        </div>
+      </div>
+      <div class="footnote">Root-cause text is heuristic, drawn from the trace. Engineer confirms or overrides. This is the forensics value — turning a bill surprise into a fixable bug.</div>
+    </div>
+  </main>
+<main class="main screen" id="screen-controls" style="display:none">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Budget Caps & Controls</div>
+        <div class="page-sub">Rules enforced in-path. When a condition trips, the action runs before more spend happens.</div>
+      </div>
+      <button class="add-btn">+ New Rule</button>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Active rules</div><div class="section-meta">5 enabled</div></div>
+
+      <div class="rule">
+        <div class="toggle"></div>
+        <div class="rule-main">
+          <div class="rule-name">Per-task hard cap</div>
+          <div class="rule-cond"><span class="k">if</span> task_spend > $3,500</div>
+        </div>
+        <span class="scope">scope: all agents</span>
+        <span class="action-pill kill">→ kill task</span>
+      </div>
+
+      <div class="rule">
+        <div class="toggle"></div>
+        <div class="rule-main">
+          <div class="rule-name">Identical-call loop guard</div>
+          <div class="rule-cond"><span class="k">if</span> same_tool_call ≥ 5 <span class="k">within</span> 60s</div>
+        </div>
+        <span class="scope">scope: all agents</span>
+        <span class="action-pill kill">→ flag + kill</span>
+      </div>
+
+      <div class="rule">
+        <div class="toggle"></div>
+        <div class="rule-main">
+          <div class="rule-name">Context window guard</div>
+          <div class="rule-cond"><span class="k">if</span> context_fill > 95%</div>
+        </div>
+        <span class="scope">scope: opus agents</span>
+        <span class="action-pill kill">→ halt task</span>
+      </div>
+
+      <div class="rule">
+        <div class="toggle"></div>
+        <div class="rule-main">
+          <div class="rule-name">Team budget fallback</div>
+          <div class="rule-cond"><span class="k">if</span> team_daily_spend > 80% of budget</div>
+        </div>
+        <span class="scope">scope: growth</span>
+        <span class="action-pill fallback">→ route to Haiku</span>
+      </div>
+
+      <div class="rule">
+        <div class="toggle off"></div>
+        <div class="rule-main">
+          <div class="rule-name">Off-hours spend alert</div>
+          <div class="rule-cond"><span class="k">if</span> spend > $500/hr <span class="k">between</span> 00:00–06:00</div>
+        </div>
+        <span class="scope">scope: all agents</span>
+        <span class="action-pill alert">→ alert oncall</span>
+      </div>
+
+      <div class="footnote">"Kill" and "halt" actions require SpendGuard to sit in the request path as a proxy. Alert-only rules work with the async SDK.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><div class="section-title">Rule builder</div><div class="section-meta">no-code condition → action</div></div>
+      <div class="builder">
+        <div class="chip"><span class="lbl">WHEN</span><span class="val">task_spend</span></div>
+        <span class="arrow">▸</span>
+        <div class="chip"><span class="lbl">OP</span><span class="val">&gt;</span></div>
+        <span class="arrow">▸</span>
+        <div class="chip"><span class="lbl">VALUE</span><span class="val">$2,000</span></div>
+        <span class="arrow">▸</span>
+        <div class="chip"><span class="lbl">SCOPE</span><span class="val">research-agent-prod</span></div>
+        <span class="arrow">▸</span>
+        <div class="chip"><span class="lbl">THEN</span><span class="val" style="color:var(--red)">kill task</span></div>
+      </div>
+      <div class="footnote">Demo only — controls are not wired in this mockup.</div>
+    </div>
+  </main>
+
+</div>
+<script>
+  function show(screen){
+    document.querySelectorAll('.screen').forEach(s=>s.style.display='none');
+    var el=document.getElementById('screen-'+screen);
+    if(el) el.style.display='block';
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    document.querySelectorAll('.nav-item[data-screen="'+screen+'"]').forEach(n=>n.classList.add('active'));
+  }
+  document.querySelectorAll('.nav-item').forEach(n=>{
+    n.addEventListener('click',()=>{
+      var s=n.getAttribute('data-screen');
+      if(s==='agents') s='monitor';
+      show(s);
+      window.scrollTo(0,0);
+    });
+  });
+  function killTask(){ alert("DEMO: Task 'research-agent-prod' terminated.\nSpend stopped at \$3,180."); }
+  show('monitor');
+</script>
+</body>
+</html>
